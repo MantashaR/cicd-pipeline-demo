@@ -76,11 +76,13 @@ jobs:
     needs: [test, build, deploy]
     runs-on: ubuntu-latest
     if: always() && github.event_name == 'push'
+    env:
+      SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
     steps:
       - name: Send Slack message
-        if: ${{ secrets.SLACK_WEBHOOK != '' }}
+        if: ${{ env.SLACK_WEBHOOK != '' }}
         run: |
           STATUS="${{ (needs.deploy.result == 'success') && '✅ Success' || '❌ Failed' }}"
           curl -fsSL -X POST -H 'Content-type: application/json' \
             --data "{\"text\":\"CI/CD Pipeline: $STATUS — build #${{ github.run_number }}\"}" \
-            "${{ secrets.SLACK_WEBHOOK }}"
+            "$SLACK_WEBHOOK"
