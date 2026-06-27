@@ -1,0 +1,20 @@
+# Spins up a local Jenkins server for running/demoing the pipeline.
+# Usage:  cd jenkins && docker compose up -d
+# Then open http://localhost:8080
+#
+# Uses Docker-in-Docker via the host socket so Jenkins can build images.
+services:
+  jenkins:
+    image: jenkins/jenkins:lts-jdk17
+    container_name: jenkins
+    user: root                       # needed to access the docker socket
+    ports:
+      - "8080:8080"                  # Jenkins UI
+      - "50000:50000"                # agent port
+    volumes:
+      - jenkins_home:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock   # build images from host docker
+    restart: unless-stopped
+
+volumes:
+  jenkins_home:

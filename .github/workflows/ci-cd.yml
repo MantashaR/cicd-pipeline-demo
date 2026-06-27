@@ -1,0 +1,86 @@
+name: CI/CD Pipeline
+
+# Run on every push and pull request to main.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # ---------- STAGE 1: Quality gate (lint + test) ----------
+  test:
+    name: Lint & Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Lint HTML
+        run: npx --yes htmlhint "site/**/*.html"
+
+      - name: Run smoke tests
+        run: node tests/smoke.test.js
+
+  # ---------- STAGE 2: Build & push Docker image ----------
+  build:
+    name: Build & Push Image
+    needs: test                       # only runs if tests pass
+    runs-on: ubuntu-latest
+    # Skip image push on PRs (no secrets) — only on push to main.
+    if: github.event_name == 'push'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Inject build metadata
+        run: |
+          sed -i "s/__BUILD_NUMBER__/${{ github.run_number }}/" site/app.js
+          sed -i "s/__COMMIT_SHA__/${{ github.sha }}/" site/app.js
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/cicd-demo:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/cicd-demo:${{ github.run_number }}
+
+  # ---------- STAGE 3: Deploy to Render ----------
+  deploy:
+    name: Deploy to Render
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    steps:
+      - name: Trigger Render deploy
+        run: |
+          curl -fsSL -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}"
+          echo "Deploy triggered on Render."
+
+  # ---------- STAGE 4: Notify (optional Slack) ----------
+  notify:
+    name: Notify Slack
+    needs: [test, build, deploy]
+    runs-on: ubuntu-latest
+    if: always() && github.event_name == 'push'
+    steps:
+      - name: Send Slack message
+        if: ${{ secrets.SLACK_WEBHOOK != '' }}
+        run: |
+          STATUS="${{ (needs.deploy.result == 'success') && '✅ Success' || '❌ Failed' }}"
+          curl -fsSL -X POST -H 'Content-type: application/json' \
+            --data "{\"text\":\"CI/CD Pipeline: $STATUS — build #${{ github.run_number }}\"}" \
+            "${{ secrets.SLACK_WEBHOOK }}"

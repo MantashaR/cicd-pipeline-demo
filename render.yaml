@@ -1,0 +1,9 @@
+# Render Blueprint — lets Render build the Docker image and host it.
+# After connecting the repo on render.com, this auto-configures the service.
+services:
+  - type: web
+    name: cicd-pipeline-demo
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    autoDeploy: true
