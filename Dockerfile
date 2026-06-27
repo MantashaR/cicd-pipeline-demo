@@ -1,14 +1,22 @@
-# Lightweight production image: nginx serving the static site.
-FROM nginx:1.27-alpine
+# Production image: Python + Flask served by gunicorn.
+FROM python:3.12-slim
 
-# Replace the default nginx config with ours.
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+WORKDIR /app
 
-# Copy the static site into nginx's web root.
-COPY site/ /usr/share/nginx/html/
+# Install dependencies first (better layer caching).
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-EXPOSE 80
+# Copy the application code.
+COPY app.py .
+COPY templates/ templates/
+COPY static/ static/
 
-# Basic container healthcheck — useful talking point in interviews.
+EXPOSE 5000
+
+# Basic container healthcheck — hits the /health endpoint.
 HEALTHCHECK --interval=30s --timeout=3s \
-  CMD wget -q --spider http://localhost/ || exit 1
+  CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:5000/health')" || exit 1
+
+# gunicorn is a production-grade WSGI server (don't use Flask's dev server in prod).
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "app:app"]

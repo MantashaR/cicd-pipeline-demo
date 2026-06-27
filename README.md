@@ -1,11 +1,13 @@
-# 🚀 CI/CD Pipeline Demo
+# 🚀 CI/CD Pipeline Demo (Python + Flask)
 
-![CI/CD Pipeline](https://github.com/YOUR_USERNAME/cicd-pipeline-demo/actions/workflows/ci-cd.yml/badge.svg)
-![Docker](https://img.shields.io/badge/Docker-nginx--alpine-blue?logo=docker)
+![CI/CD Pipeline](https://github.com/MantashaR/cicd-pipeline-demo/actions/workflows/ci-cd.yml/badge.svg)
+![Python](https://img.shields.io/badge/Python-3.12-blue?logo=python)
+![Docker](https://img.shields.io/badge/Docker-python--slim-blue?logo=docker)
 ![Deployed on Render](https://img.shields.io/badge/Deployed-Render-46E3B7?logo=render)
 
-An end-to-end **CI/CD pipeline** that takes a static website from `git push`
-all the way to a live, deployed URL — fully automated, with zero manual steps.
+An end-to-end **CI/CD pipeline** that takes a **Python Flask** web app from
+`git push` all the way to a live, deployed URL — fully automated, with zero
+manual steps.
 
 > **Live demo:** _add your Render URL here after deploy_
 
@@ -35,22 +37,30 @@ If any test fails, the build stops — nothing broken ever reaches production.
 | Concern            | Tool                          |
 |--------------------|-------------------------------|
 | CI/CD engine       | GitHub Actions **and** Jenkins|
-| Containerization   | Docker (nginx:alpine)         |
+| Web app            | Python + Flask + gunicorn     |
+| Containerization   | Docker (python:3.12-slim)     |
 | Image registry     | Docker Hub                    |
 | Hosting / deploy   | Render (push-to-deploy)       |
-| Quality gate       | htmlhint + Node smoke tests   |
+| Quality gate       | flake8 (lint) + pytest (tests)|
 | Notifications      | Slack webhook (optional)      |
 
 ## ▶️ Run locally
 
 ```bash
-# Run the tests
-node tests/smoke.test.js
+# Install dependencies
+pip install -r requirements.txt
 
-# Build and run the container
+# Run the tests + lint
+flake8 app.py tests/ --max-line-length=100
+pytest -v
+
+# Run the app directly
+python app.py
+# open http://localhost:5000
+
+# ...or build and run the container
 docker build -t cicd-demo .
-docker run -p 8080:80 cicd-demo
-# open http://localhost:8080
+docker run -p 5000:5000 cicd-demo
 ```
 
 ## ⚙️ Setup (to make the pipeline live)

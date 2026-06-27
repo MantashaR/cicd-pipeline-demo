@@ -29,8 +29,9 @@ pipeline {
     // ---------- STAGE 1: Quality gate (lint + test) ----------
     stage('Lint & Test') {
       steps {
-        sh 'npx --yes htmlhint "site/**/*.html"'
-        sh 'node tests/smoke.test.js'
+        sh 'pip install -r requirements.txt'
+        sh 'flake8 app.py tests/ --max-line-length=100'
+        sh 'pytest -v'
       }
     }
 
@@ -38,11 +39,6 @@ pipeline {
     stage('Build & Push Image') {
       when { branch 'main' }
       steps {
-        // Inject build metadata into the page.
-        sh '''
-          sed -i "s/__BUILD_NUMBER__/${BUILD_NUMBER}/" site/app.js
-          sed -i "s/__COMMIT_SHA__/$(git rev-parse HEAD)/" site/app.js
-        '''
         withCredentials([usernamePassword(
           credentialsId: 'dockerhub-creds',
           usernameVariable: 'DOCKERHUB_USERNAME',
